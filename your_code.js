@@ -45,25 +45,29 @@ MazeAPI.onRun(function() {
      * The starting position can be anywhere inside of the maze (not just at an edge or corner).
      */
 
-    //TODO: Enter your code here
 
-    /**
-     * This is a very silly algorithm. It moves the player in a random direction until it reaches the end (if it ever does!)
-     * TODO: Remove this code .. it's here just as an example of how to use the MazeAPI
-     */
-	var directions = ['down','up','left','right'];
 
-    var moveRandomly = function() {
 
-        console.log("Look what is around you: ", MazeAPI.lookAround());
 
-        if (!MazeAPI.isEnd()) {
-            var rndMove = Math.floor(Math.random() * 4);
-			MazeAPI.move(directions[rndMove], moveRandomly);
-        }
+    if (false) {
+        /**
+         * This is a very silly algorithm. It moves the player in a random direction until it reaches the end (if it ever does!)
+         * TODO: Remove this code .. it's here just as an example of how to use the MazeAPI
+         */
+        var directions = ['down','up','left','right'];
 
-    };
+        var moveRandomly = function() {
 
-    moveRandomly();
+            console.log("Look what is around you: ", MazeAPI.lookAround());
+
+            if (!MazeAPI.isEnd()) {
+                var rndMove = Math.floor(Math.random() * 4);
+                MazeAPI.move(directions[rndMove], moveRandomly);
+            }
+
+        };
+
+        moveRandomly();
+    }
 
 });
