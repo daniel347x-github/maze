@@ -15,7 +15,34 @@ MazeAPI.onRun(function() {
 
     //TODO: Explain your approach here
     /*
-     * My approach is ...
+     * The key ideas for the maze algorithm are simple, but powerful.
+     *
+     * We use only local information - the branches available at every coordinate.
+     * We save this local information for reuse whenever we return to the same square.
+     *
+     * Optimizations that utilize global information (namely, the geometrical structure of the paths)
+     * would allow for a faster, better-scaling algorithm, but would be more complex.
+     *
+     * The first concept used in the algorithm is to break loops by replacing one point in each loop
+     * with a wall (logically).  This will never close off a route to the exit.
+     * (Note that merging paths are effectively loops, and the same reasoning applies.)
+     * See comments in the code itself for the simple, slick approach that is used to detect and close loops
+     * via local information only.
+     *
+     * Once loops have logically been eliminated, the entire maze becomes a tree structure,
+     * which simplifies the logic.  We use a depth-first approach to walking through the maze;
+     * this means that we always choose to move deeper into the tree, before choosing to backtrack.
+     * If we reach a dead end, we backtrack to the nearest branch and a simple trick can be used to logically replace
+     * the entrance to the dead end with a wall (see comments in the code).
+     * We then move down the next untraveled branch (if there is one) or continue backtracking & close off the branch (if not),
+     * in iterative fashion.
+     *
+     * The above approach guarantees that we close off dead-end paths properly and never travel the same path
+     * in the same direction, so there is a guaranteed O(n) efficiency to this algorithm.
+     * We are also guaranteed to eventually travel all paths, at least one of which will lead to the exit.
+     *
+     * A couple of comments: The above algorithm is robust against the starting position.
+     * The starting position can be anywhere inside of the maze (not just at an edge or corner).
      */
 
     //TODO: Enter your code here
