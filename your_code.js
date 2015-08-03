@@ -137,6 +137,10 @@ MazeAPI.onRun(function() {
 
 });
 
+// ****************************************************************************** //
+// The following function (class) contains the IMPLEMENTATION details.
+// For the algorithm itself, in overview, see above.
+// ****************************************************************************** //
 function implementation() {
 
     var self = this;
@@ -168,6 +172,11 @@ function implementation() {
     // ****************************************************************************** //
     self.mazeData = null;
 
+    // ****************************************************************************** //
+    // This function tests to see if there are any OPEN BRANCHES adjacent to the current position.
+    // ... That means specifically: any adjacent position that we have NEVER BEEN ON previously.
+    // (This works even in corridors, so no special logic is used for that case.)
+    // ****************************************************************************** //
     self.detectOpenBranch = function(surroundings) {
         if (surroundings.up === "space") {
             var testPos = {"row" : self.row-1, "col" : self.col, "bit" : 1, "dir" : "up"};
@@ -196,6 +205,9 @@ function implementation() {
 
         return null;
 
+        // ****************************************************************************** //
+        // Test a single adjacent position to see if we have ever been on it.
+        // ****************************************************************************** //
         function testDirection(testPos) {
             self.expandBufferIfNecessary(testPos);
 
@@ -216,7 +228,13 @@ function implementation() {
         }
     };
 
-    // THE FOLLOWING FUNCTION IS CALLED FROM ABOVE
+    // ****************************************************************************** //
+    // This function tests to see which direction we need to go to backtrack.
+    // The algorithm guarantees that if there are no open branch positions adjacent to our current position,
+    // there MUST be one and only one direction in which to backtrack (assuming there is a path to the exit).
+    // The condition is that the given adjacent position is one FROM which we have previously moved to our current position,
+    // but one TO which we have never moved from our current position.
+    // ****************************************************************************** //
     self.locateBacktrackBranch = function(surroundings) {
         if (surroundings.up === "space") {
             var testPos = {"row" : self.row-1, "col" : self.col, "bit" : 1, "dir" : "up"};
@@ -245,6 +263,9 @@ function implementation() {
 
         return null;
 
+        // ****************************************************************************** //
+        // Test a single adjacent position to see if the (above) backtracking condition is met.
+        // ****************************************************************************** //
         function testDirection(testPos, testBitFromTarget, testBitToTarget) {
             self.expandBufferIfNecessary(testPos);
 
