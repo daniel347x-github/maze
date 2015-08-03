@@ -35,37 +35,40 @@ MazeAPI.onRun(function() {
      * This will never close off a route to the exit.
      * (Note that paths that merge are effectively loops, and the same reasoning applies.)
      * We create a logical wall at the exact boundary between two squares that, if crossed, would cause us to rejoin a path we've already been on
-     * (assuming we're not backtracking, which is discussed below).
+     * (assuming we're not backtracking, which is discussed below).  This breaks all loops!
      *
      * // ******* //
      * // CONCEPT 2
      * // ******* //
      * Once loops have logically been eliminated, the entire maze becomes a tree structure, which simplifies the logic.
      * We use a depth-first approach to walking through the maze; this means that we always choose to move deeper into the tree, before choosing to backtrack.
-     * If we reach a dead end, we backtrack to the nearest decision-point branch and a simple test indicates that the branch
+     * If we reach a dead end, we backtrack to the nearest decision-point branch and a simple test later indicates that the branch
      * is now a dead end (see comments below) - this also becomes a 'logical wall'.
      * We then move down the next untraveled branch (if there is one) or, if there is no untraveled branch available, we continue backtracking.
+     *
      * This procedure continues in iterative fashion,
-     * closing off entire dead-end paths with logical walls until the remaining available test paths converge on a path to the end of the maze.
+     * breaking loops and closing off entire dead-end paths with logical walls until the remaining available test paths converge on a path to the end of the maze.
      *
      * // ******* //
      * // Algorithm
      * // ******* //
      * With the above overall concepts in place, we can now derive the algorithm itself.
      * The algorithm breaks the motion into two modes: forward mode, and backtracking mode.
-     * (1) Forward mode
+     * (1) Forward mode (depth-first)
      *     In this mode the user always moves across uncharted territory.  If there is an adjacent square
      *     to be traversed that has never been visited previously, take it without question!
      *     Given two or more available such squares, the order does not matter.
      *     Careful consideration of this rule reveals that the algorithm will always cause the user
      *     to move deeper into the (logical) tree structure before moving to sibling branches in the tree structure.
+     *     This makes it a depth-first algorithm.
      *     (This assumes that loops have been broken, which is accomplished by the backtracking algorithm, discussed next.)
      * (2) Backtracking mode
      *     When there is no available square that has NOT been traversed adjacent to the current square,
      *     the user has found (or is on) a dead end branch relative to the tree structure of the maze.
      *     (This follows from the fact that the exit of the maze will always be an open branch within the tree structure.)
-     *     The user must now backtrack out of the dead branch.  The user backtracks following two rules.
-     *     (a) Follow rule (1) (and end backtracking) if there is an adjacent square available that has never been traversed.
+     *     The user must now backtrack out of the dead branch.
+     *     The user backtracks following two rules.
+     *     (a) Follow rule (1) (and therefore end backtracking) if there is an adjacent square available that has never been traversed.
      *     (b) Do not backtrack onto a square if that would cause a loop to form, or if we would enter a dead-end path.
      *         - Break Loops: Careful consideration reveals that a simple condition
      *           indicates the presence of a loop that would form if an adjacent square were chosen.
@@ -77,8 +80,9 @@ MazeAPI.onRun(function() {
      *           and TO the adjacent square FROM the current square, this is a dead-end.  Do not take it.
      *         From the above, the backtracking condition is revealed: The user MUST have previously moved FROM the adjacent square
      *         TO the current square, but MUST NOT have moved TO the adjacent square FROM the current square.
-     *         If this single condition is met, this is a valid backtracking square.
-     *         Note that there can only be one possible valid backtracking move available at any given position for which Rule (1) does not apply.
+     *         If this single condition is met on squares that have no adjacent open branches, this is a valid backtracking square.
+     *         Note that there can only be one possible valid backtracking move available at any given position with no adjacent open branches.
+     *
      * That's all!  With the above algorithm & rules in place, the maze can be traversed.
      * You can see from the above rules that only the local 'up', 'right', 'down', 'left' traversal information needs to be tracked for every square.
      *
