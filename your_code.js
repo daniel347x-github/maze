@@ -69,65 +69,168 @@ MazeAPI.onRun(function() {
     // and the coordinates can be negative.
     // ****************************************************************************** //
     var mazeData = null;
-    expandBufferIfNecessary(51, 51); // Initialize the buffer for the first time.
+    expandBufferIfNecessary({"row" : maxMazeHeight / 2 + 1, "col" : maxMazeWidth / 2 + 1}); // Initialize the buffer for the first time.
 
     // Track our current position in the maze.
     var row = 0;
     var col = 0;
 
     // ****************************************************************************** //
+    // Kick off the recursive movement through the maze.
+    // ****************************************************************************** //
+    move();
+
+    // ****************************************************************************** //
+    // CALLED FROM ABOVE
     // The core function - make a single move through the maze,
     // starting at the current position
     // ****************************************************************************** //
     function move() {
+
+        //console.log("Look what is around you: ", MazeAPI.lookAround());
+
+        var surroundings = MazeAPI.lookAround();
+
         if (MazeAPI.isEnd()) {
-            // We are at the exit!
+            // We are at the exit of the maze!
             return;
         }
 
-        var openBranch = detectOpenBranch();
+        var newPos = null;
+
+        var openBranch = detectOpenBranch(surroundings);
         if (openBranch) {
             // A path that has NEVER been taken is available.  Take it.
             // ... This works even for corridors without a branch.
-
-            return;
+            newPos = openBranch;
         }
-
-        // No untrodden path is available, so we must backtrack.
-        // The algorithm guarantees that there can be only one possible backtracking direction.
-        var backtrackBranch = locateBacktrackBranch();
-        if (!backtrackBranch) {
-            // Either the algorithm is broken, or there is no exit to this maze
-            throw "There is no exit to the maze!";
-        }
-
-    }
-
-    if (false) {
-        /**
-         * This is a very silly algorithm. It moves the player in a random direction until it reaches the end (if it ever does!)
-         * TODO: Remove this code .. it's here just as an example of how to use the MazeAPI
-         */
-        var directions = ['down','up','left','right'];
-
-        var moveRandomly = function() {
-
-            console.log("Look what is around you: ", MazeAPI.lookAround());
-
-            if (!MazeAPI.isEnd()) {
-                var rndMove = Math.floor(Math.random() * 4);
-                MazeAPI.move(directions[rndMove], moveRandomly);
+        else {
+            // No untrodden path is available, so we must backtrack.
+            // The algorithm guarantees that there can be only one possible backtracking direction.
+            var backtrackBranch = locateBacktrackBranch(surroundings);
+            if (!backtrackBranch) {
+                // Either the algorithm is broken, or there is no exit to this maze
+                throw "There is no exit to the maze!";
             }
+            newPos = backtrackBranch;
+        }
 
-        };
-
-        moveRandomly();
+        // Set the proper bit to indicate that we are moving in the given direction.
+        var currentData = mazeData[row * (maxMazeWidth + 1) + col];
+        currentData |= newPos.bit;
+        mazeData[row * (maxMazeWidth + 1) + col] = currentData;
+        row = newPos.row;
+        col = newPos.col;
+        MazeAPI.move(newPos.dir, move);
     }
 
-    function expandBufferIfNecessary(x, y) { // Definitions of functions are allowed after calls to those functions, when this syntax is used
+    // THE FOLLOWING FUNCTION IS CALLED FROM ABOVE
+    // Definitions of functions are allowed after calls to those functions, when this function syntax is used
+    function detectOpenBranch(surroundings) {
+        if (surroundings.up === "space") {
+            var testPos = {"row" : row-1, "col" : col, "bit" : 1, "dir" : "up"};
+            if (testDirection(testPos)) {
+                return testPos;
+            }
+        }
+        if (surroundings.right === "space") {
+            var testPos = {"row" : row, "col" : col+1, "bit" : 2, "dir" : "right"};
+            if (testDirection(testPos)) {
+                return testPos;
+            }
+        }
+        if (surroundings.down === "space") {
+            var testPos = {"row" : row+1, "col" : col, "bit" : 4, "dir" : "down"};
+            if (testDirection(testPos)) {
+                return testPos;
+            }
+        }
+        if (surroundings.left === "space") {
+            var testPos = {"row" : row, "col" : col-1, "bit" : 8, "dir" : "left"};
+            if (testDirection(testPos)) {
+                return testPos;
+            }
+        }
+
+        return null;
+
+        function testDirection(testPos) {
+            expandBufferIfNecessary(testPos);
+
+            // ****************************************************************************** //
+            // A position being tested represents an open branch
+            // if we have NEVER been at the given position.
+            // This is the case if the 'up', 'down', 'right' & 'left' bits
+            // of the position being tested are all unset
+            // (meaning that we never moved in any direction out of the given position)
+            // ****************************************************************************** //
+
+            // Get the data byte corresponding to the test position
+            var testByte = mazeData[testPos.row * (maxMazeWidth + 1) + testPos.col];
+            if ( (testByte & 1) || (testByte & 2) || (testByte & 4) || (testByte & 8) ) {
+                return false;
+            }
+            return true;
+        }
+    }
+
+    // THE FOLLOWING FUNCTION IS CALLED FROM ABOVE
+    // Definitions of functions are allowed after calls to those functions, when this function syntax is used
+    function locateBacktrackBranch() {
+        if (surroundings.up === "space") {
+            var testPos = {"row" : row-1, "col" : col, "bit" : 1, "dir" : "up"};
+            if (testDirection(testPos, 4, 1)) {
+                return testPos;
+            }
+        }
+        if (surroundings.right === "space") {
+            var testPos = {"row" : row, "col" : col+1, "bit" : 2, "dir" : "right"};
+            if (testDirection(testPos, 8, 2)) {
+                return testPos;
+            }
+        }
+        if (surroundings.down === "space") {
+            var testPos = {"row" : row+1, "col" : col, "bit" : 4, "dir" : "down"};
+            if (testDirection(testPos, 1, 4)) {
+                return testPos;
+            }
+        }
+        if (surroundings.left === "space") {
+            var testPos = {"row" : row, "col" : col-1, "bit" : 8, "dir" : "left"};
+            if (testDirection(testPos, 2, 8)) {
+                return testPos;
+            }
+        }
+
+        return null;
+
+        function testDirection(testPos, testBitFromTarget, testBitToTarget) {
+            expandBufferIfNecessary(testPos);
+
+            // ****************************************************************************** //
+            // A position being tested represents a branch that can be backtracked across
+            // if and only if the path FROM the test position TO our current position has been traversed,
+            // but NOT the path FROM our current position TO the test position.
+            // ****************************************************************************** //
+
+            // Get the data byte corresponding to the test position and to the current position
+            var targetData = mazeData[testPos.row * (maxMazeWidth + 1) + testPos.col];
+            var currentData = mazeData[row * (maxMazeWidth + 1) + col];
+            if ( ((targetData & testBitFromTarget) != 0) && ((currentData & testBitToTarget) == 0) ) {
+                return true;
+            }
+            return false;
+        }
+    }
+
+    // THE FOLLOWING FUNCTION IS CALLED FROM ABOVE
+    // Definitions of functions are allowed after calls to those functions, when this function syntax is used
+    function expandBufferIfNecessary(testPos) {
         // In case the maze is larger than our current maximum, exponentially increase its size.
         var doExpandWidth = false;
         var doExpandHeight = false;
+        var x = testPos.col;
+        var y = testPos.row;
         if (Math.abs(x) > maxMazeWidth / 2) { doExpandWidth = true; }
         if (Math.abs(y) > maxMazeHeight / 2) { doExpandHeight = true; }
         if (doExpandWidth || doExpandHeight) {
