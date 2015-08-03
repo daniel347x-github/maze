@@ -128,20 +128,16 @@ MazeAPI.onRun(function() {
         // This is a depth-first algorithm.
         // Therefore, first check if there is an adjacent position that is available (not a wall)
         // and that we have NOT visited before.
-        // The order does not matter - if there are more than one such open branch, just move down the first one we find.
+        // The order does not matter - if there are more than one such open branches, just move down the first one we find.
         // The condition of an open branch is that ALL FOUR DIRECTIONS leading FROM the target (adjacent) position
         // must NEVER have been traversed.
-        //
-        // NOTE: THIS IS THE LOOP-BREAKING TRICK noted in the comments above.
-        // (Loops are broken because (backtracking aside) we will NEVER move into an adjacent position that we have EVER been on before,
-        // regardless of whether or not we actually came from that adjacent position to the current position.
-        // Backtracking is the single exception, but backtracking is a case in which we are following a path already traveled,
-        // not creating a loop.)
         // ****************************************************************************** //
         var openBranch = internals.detectOpenBranch(surroundings);
         if (openBranch) {
+            // ****************************************************************************** //
             // A path onto an adjacent square that has NEVER been visited is available.  Take it.
             // ... This works even for corridors (i.e., paths without a decision-point branch).
+            // ****************************************************************************** //
             newPos = openBranch;
         }
         else {
@@ -149,12 +145,17 @@ MazeAPI.onRun(function() {
             // No open branch is available, so we must backtrack.
             // The algorithm guarantees that there can be only one possible backtracking direction.
             // (This also applies in corridors.)
-            // SIMPLE TRICK USED: if we have traversed in BOTH directions over a given boundary,
-            // this counts as a WALL and is rejected as a backtracking possibility.
+            // BREAK LOOPS and AVOID DEAD ENDS:
+            // - Break loops:
+            //   If we have previously been on the target adjacent square but NEVER traversed to/from that square
+            //   from/to our current square, this reveals a LOOP and we break that loop by treating that boundary
+            //   as a LOGICAL WALL: It is rejected as a backtracking possibility.
+            // - Skip dead ends:
+            //   If we have traversed in BOTH directions over a given boundary,
+            //   this reveals a DEAD END and it counts as a LOGICAL WALL; it is rejected as a backtracking possibility.
             // Therefore, the condition for a BACKTRACKING path is simply that
             // we must NEVER have previously moved FROM the current position TO the target position,
             // but that we MUST HAVE previously moved FROM the target position TO the current position.
-            // Consideration reveals that we will never form a loop in this fashion, but can only backtrack.
             // ****************************************************************************** //
             var backtrackBranch = internals.locateBacktrackBranch(surroundings);
             if (!backtrackBranch) {
@@ -164,12 +165,20 @@ MazeAPI.onRun(function() {
             newPos = backtrackBranch;
         }
 
+        // ****************************************************************************** //
+        // This is the key state-saving step of the algorithm!
         // Set the proper state bit to indicate that we are moving in the given direction.
+        // ****************************************************************************** //
         var currentData = internals.mazeData[internals.row * (internals.maxMazeWidth + 1) + internals.col];
         currentData |= newPos.bit;
         internals.mazeData[internals.row * (internals.maxMazeWidth + 1) + internals.col] = currentData;
+
+        // Save our new position
         internals.row = newPos.row;
         internals.col = newPos.col;
+
+        // Now call the API to actually make the move
+        // (once the animation is complete, the API will call our 'move' function again)
         MazeAPI.move(newPos.dir, move);
     }
 
@@ -194,8 +203,8 @@ function implementation() {
     self.col = 0;
 
     // ****************************************************************************** //
-    // Create a buffer to track LOCAL maze data.
-    // The starting point is taken to be (0,0), and the coordinates can be negative.
+    // Create a buffer to track LOCAL maze data (which of the four directions have been traversed out of each square?).
+    // The starting point in the maze is taken to be (0,0), and the coordinates can be negative.
     // EACH COORDINATE corresponds to a single byte in the buffer at index (row * maxMazeWidth + col).
     //
     // The BYTE for each coordinate is a bitmask:
@@ -213,33 +222,34 @@ function implementation() {
 
     // ****************************************************************************** //
     // This function tests to see if there are any OPEN BRANCHES adjacent to the current position.
-    // ... That means specifically: any adjacent position that we have NEVER BEEN ON previously.
+    // ... That means specifically: any adjacent position that we have NEVER BEEN ON previously is an OPEN BRANCH,
+    // given by the condition that the given adjacent position has NEVER been traversed OUT OF (in any direction).
     // (This works even in corridors, so no special logic is used for that case.)
     // ****************************************************************************** //
     self.detectOpenBranch = function(surroundings) {
         if (surroundings.up === "space") {
-            // Test the square above
+            // Test the square above to see if it's ever been traversed out of
             var testPos = {"row" : self.row-1, "col" : self.col, "bit" : 1, "dir" : "up"};
             if (testDirection(testPos)) {
                 return testPos;
             }
         }
         if (surroundings.right === "space") {
-            // Test the square to the right
+            // Test the square to the right to see if it's ever been traversed out of
             var testPos = {"row" : self.row, "col" : self.col+1, "bit" : 2, "dir" : "right"};
             if (testDirection(testPos)) {
                 return testPos;
             }
         }
         if (surroundings.down === "space") {
-            // Test the square below
+            // Test the square below to see if it's ever been traversed out of
             var testPos = {"row" : self.row+1, "col" : self.col, "bit" : 4, "dir" : "down"};
             if (testDirection(testPos)) {
                 return testPos;
             }
         }
         if (surroundings.left === "space") {
-            // Test the square to the left
+            // Test the square to the left to see if it's ever been traversed out of
             var testPos = {"row" : self.row, "col" : self.col-1, "bit" : 8, "dir" : "left"};
             if (testDirection(testPos)) {
                 return testPos;
@@ -249,10 +259,11 @@ function implementation() {
         return null;
 
         // ****************************************************************************** //
-        // Test a single adjacent position to see if we have ever been on it.
+        // Test a single adjacent position to see if we have ever been on it
+        // (i.e., to see if it has ever been traversed out of).
         // ****************************************************************************** //
         function testDirection(testPos) {
-            self.expandBufferIfNecessary(testPos);
+            self.expandBufferIfNecessary(testPos); // if the position we are about to test would be OUTSIDE the current maze's maximum dimensions, enlarge the data buffer storing the maze data
 
             // ****************************************************************************** //
             // A position being tested represents an open branch
@@ -265,10 +276,13 @@ function implementation() {
             // Get the data byte corresponding to the test position
             var testByte = self.mazeData[testPos.row * (self.maxMazeWidth + 1) + testPos.col];
 
-            // Test if any bit has been set
+            // Test if any bit has been set - if so, we HAVE been on that square, so return false
             if ( (testByte & 1) || (testByte & 2) || (testByte & 4) || (testByte & 8) ) {
                 return false;
             }
+
+            // Success!  The square being tested has never been visited before.
+            // It is an open branch.  Return true.
             return true;
         }
     };
@@ -282,28 +296,28 @@ function implementation() {
     // ****************************************************************************** //
     self.locateBacktrackBranch = function(surroundings) {
         if (surroundings.up === "space") {
-            // Test the square above
+            // Test the square above to see if the backtracking condition is met
             var testPos = {"row" : self.row-1, "col" : self.col, "bit" : 1, "dir" : "up"};
             if (testDirection(testPos, 4, 1)) {
                 return testPos;
             }
         }
         if (surroundings.right === "space") {
-            // Test the square to the right
+            // Test the square to the right to see if the backtracking condition is met
             var testPos = {"row" : self.row, "col" : self.col+1, "bit" : 2, "dir" : "right"};
             if (testDirection(testPos, 8, 2)) {
                 return testPos;
             }
         }
         if (surroundings.down === "space") {
-            // Test the square below
+            // Test the square below to see if the backtracking condition is met
             var testPos = {"row" : self.row+1, "col" : self.col, "bit" : 4, "dir" : "down"};
             if (testDirection(testPos, 1, 4)) {
                 return testPos;
             }
         }
         if (surroundings.left === "space") {
-            // Test the square to the left
+            // Test the square to the left to see if the backtracking condition is met
             var testPos = {"row" : self.row, "col" : self.col-1, "bit" : 8, "dir" : "left"};
             if (testDirection(testPos, 2, 8)) {
                 return testPos;
@@ -313,10 +327,10 @@ function implementation() {
         return null;
 
         // ****************************************************************************** //
-        // Test a single adjacent position to see if the (above) backtracking condition is met.
+        // Test a single adjacent position to see if the (above) backtracking condition is met for that position.
         // ****************************************************************************** //
         function testDirection(testPos, testBitFromTarget, testBitToTarget) {
-            self.expandBufferIfNecessary(testPos);
+            self.expandBufferIfNecessary(testPos); // if the position we are about to test would be OUTSIDE the current maze's maximum dimensions, enlarge the data buffer storing the maze data.
 
             // ****************************************************************************** //
             // A position being tested represents a branch that can be backtracked across
@@ -328,11 +342,13 @@ function implementation() {
             var targetData = self.mazeData[testPos.row * (self.maxMazeWidth + 1) + testPos.col];
             var currentData = self.mazeData[self.row * (self.maxMazeWidth + 1) + self.col];
 
-            // Test for the condition described above
+            // Test for the backtracking condition
             if ( ((targetData & testBitFromTarget) != 0) && ((currentData & testBitToTarget) == 0) ) {
+                // The backtracking condition is met: return true
                 return true;
             }
 
+            // The backtracking condition has not been met: return false
             return false;
         }
     };
