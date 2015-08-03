@@ -277,7 +277,7 @@ function implementation() {
             // ****************************************************************************** //
 
             // Get the data byte corresponding to the test position
-            var testByte = self.mazeData[internals.getBufferIndex(testPos.row, testPos.col)];
+            var testByte = self.mazeData[self.getBufferIndex(testPos.row, testPos.col)];
 
             // Test if any bit has been set - if so, we HAVE been on that square, so return false
             if ( (testByte & 1) || (testByte & 2) || (testByte & 4) || (testByte & 8) ) {
@@ -343,8 +343,8 @@ function implementation() {
 
             // Get the data byte corresponding to the test position and to the current position
 
-            var targetData = self.mazeData[internals.getBufferIndex(testPos.row, testPos.col)];
-            var currentData = self.mazeData[internals.getBufferIndex(self.row, self.col)];
+            var targetData = self.mazeData[self.getBufferIndex(testPos.row, testPos.col)];
+            var currentData = self.mazeData[self.getBufferIndex(self.row, self.col)];
 
             // Test for the backtracking condition
             if ( ((targetData & testBitFromTarget) != 0) && ((currentData & testBitToTarget) == 0) ) {
