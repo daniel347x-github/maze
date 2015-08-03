@@ -31,8 +31,9 @@ MazeAPI.onRun(function() {
      * The first concept used in the algorithm is to break loops by replacing one point in each loop
      * with a wall (logically).  This will never close off a route to the exit.
      * (Note that paths that merge are effectively loops, and the same reasoning applies.)
-     * See comments in the code itself for the simple, slick approach that is used to detect and close loops
-     * via local information only.
+     * We create a logical wall at the exact boundary that, if crossed, would cause us to rejoin a path we've already been on
+     * (assuming we're not backtracking, which is discussed below).
+     * See comments in the code itself for the details of the approach.
      *
      * // ******* //
      * // CONCEPT 2
@@ -44,11 +45,12 @@ MazeAPI.onRun(function() {
      * the entrance to the dead end with a logical, local wall (see comments in the code).
      * We then move down the next untraveled branch (if there is one) or, if there is no untraveled branch available,
      * we continue backtracking. This procedure continues in iterative fashion,
-     * closing off entire paths with logical walls until the only remaining path becomes the one to the end of the maze.
+     * closing off entire dead-end paths with logical walls until the remaining available test paths
+     * converge on a path to the end of the maze.
      *
-     * // ******* //
+     * // ******************* //
      * // ADDITIONAL COMMENTS
-     * // ******* //
+     * // ******************* //
      * The above algorithm is robust against the starting position.
      * The starting position can be anywhere inside of the maze (not just at an edge or corner).
      * Also, the maze does not need to be rectangular.
@@ -62,7 +64,6 @@ MazeAPI.onRun(function() {
     // Create a helper object that wraps the internal functions
     // ****************************************************************************** //
     var internals = new implementation();
-    internals.expandBufferIfNecessary({"row" : internals.maxMazeHeight / 2 + 1, "col" : internals.maxMazeWidth / 2 + 1}); // Initialize the buffer for the default maximum maze dimensions.
 
     // ****************************************************************************** //
     // Kick off the recursive movement through the maze.
@@ -313,5 +314,8 @@ function implementation() {
             self.mazeData = tempData;
         }
     };
+
+    // Initialize the buffer for the default maximum maze dimensions.
+    self.expandBufferIfNecessary({"row" : self.maxMazeHeight / 2 + 1, "col" : self.maxMazeWidth / 2 + 1});
 
 }
