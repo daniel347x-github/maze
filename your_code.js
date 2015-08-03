@@ -176,7 +176,7 @@ MazeAPI.onRun(function() {
 
     // THE FOLLOWING FUNCTION IS CALLED FROM ABOVE
     // Definitions of functions are allowed after calls to those functions, when this function syntax is used
-    function locateBacktrackBranch() {
+    function locateBacktrackBranch(surroundings) {
         if (surroundings.up === "space") {
             var testPos = {"row" : row-1, "col" : col, "bit" : 1, "dir" : "up"};
             if (testDirection(testPos, 4, 1)) {
