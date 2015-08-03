@@ -23,7 +23,7 @@ MazeAPI.onRun(function() {
      *
      * We save this information in a bitmask utilizing 4 bits per coordinate. For efficiency, we store the bitmasks in a (contiguous) ArrayBuffer.
      *
-     * The fact that only the 'up', 'right', 'down', 'left' traversal information needs to be saved
+     * The fact that only the 'up', 'right', 'down', 'left' traversal information needs to be saved per square
      * in order to complete the maze belies the REASONING behind the algorithm.
      *
      * The REAL algorithm - conceptually and in specific detail - follows.
@@ -31,45 +31,45 @@ MazeAPI.onRun(function() {
      * // ******* //
      * // CONCEPT 1
      * // ******* //
-     * The first concept used in the algorithm is to break loops by replacing one point in each loop
-     * with a wall (logically).  This will never close off a route to the exit.
+     * The first concept used in the algorithm is to break loops by replacing one point in each loop with a wall (logically speaking).
+     * This will never close off a route to the exit.
      * (Note that paths that merge are effectively loops, and the same reasoning applies.)
-     * We create a logical wall at the exact boundary between squares that, if crossed, would cause us to rejoin a path we've already been on
+     * We create a logical wall at the exact boundary between two squares that, if crossed, would cause us to rejoin a path we've already been on
      * (assuming we're not backtracking, which is discussed below).
      *
      * // ******* //
      * // CONCEPT 2
      * // ******* //
-     * Once loops have logically been eliminated, the entire maze becomes a tree structure,
-     * which simplifies the logic.  We use a depth-first approach to walking through the maze;
-     * this means that we always choose to move deeper into the tree, before choosing to backtrack.
-     * If we reach a dead end, we backtrack to the nearest decision-point branch and a simple trick can be used to logically replace
-     * the entrance to the dead end with a logical, local wall (see comments below).
-     * We then move down the next untraveled branch (if there is one) or, if there is no untraveled branch available,
-     * we continue backtracking. This procedure continues in iterative fashion,
-     * closing off entire dead-end paths with logical walls until the remaining available test paths
-     * converge on a path to the end of the maze.
+     * Once loops have logically been eliminated, the entire maze becomes a tree structure, which simplifies the logic.
+     * We use a depth-first approach to walking through the maze; this means that we always choose to move deeper into the tree, before choosing to backtrack.
+     * If we reach a dead end, we backtrack to the nearest decision-point branch and a simple test indicates that the branch
+     * is now a dead end (see comments below) - this also becomes a 'logical wall'.
+     * We then move down the next untraveled branch (if there is one) or, if there is no untraveled branch available, we continue backtracking.
+     * This procedure continues in iterative fashion,
+     * closing off entire dead-end paths with logical walls until the remaining available test paths converge on a path to the end of the maze.
      *
      * // ******* //
      * // Algorithm
      * // ******* //
-     * With the above concepts in place, we can now derive the algorithm itself.
+     * With the above overall concepts in place, we can now derive the algorithm itself.
      * The algorithm breaks the motion into two modes: forward mode, and backtracking mode.
      * (1) Forward mode
-     *     In this mode the user always moves across uncharted territory.  If there is a square
-     *     to be traversed that has never been visited previously, take it without questions!
+     *     In this mode the user always moves across uncharted territory.  If there is an adjacent square
+     *     to be traversed that has never been visited previously, take it without question!
      *     Given two or more available such squares, the order does not matter.
      *     Careful consideration of this rule reveals that the algorithm will always cause the user
      *     to move deeper into the (logical) tree structure before moving to sibling branches in the tree structure.
+     *     (This assumes that loops have been broken, which is accomplished by the backtracking algorithm, discussed next.)
      * (2) Backtracking mode
-     *     When there is no available square that has not been traversed adjacent to the current square, the user has found a dead end.
-     *     This corresponds to a leaf of the (logical) tree structure.  The user must now backtrack out of the dead branch.
-     *     The user backtracks following two rules.
+     *     When there is no available square that has NOT been traversed adjacent to the current square,
+     *     the user has found (or is on) a dead end branch relative to the tree structure of the maze.
+     *     (This follows from the fact that the exit of the maze will always be an open branch within the tree structure.)
+     *     The user must now backtrack out of the dead branch.  The user backtracks following two rules.
      *     (a) Follow rule (1) (and end backtracking) if there is an adjacent square available that has never been traversed.
-     *     (b) Do not backtrack onto a square if that would cause a loop to form, or if we are entering a dead-end path.
+     *     (b) Do not backtrack onto a square if that would cause a loop to form, or if we would enter a dead-end path.
      *         - Break Loops: Careful consideration reveals that a simple condition
      *           indicates the presence of a loop that would form if an adjacent square were chosen.
-     *           Namely: If the user has previously BEEN on the
+     *           Namely: If the user HAS previously BEEN on the
      *           given adjacent square, but has NEVER moved FROM the adjacent square TO the current square (and has never moved
      *           from the current square to the given adjacent square, though the latter is a condition that can never occur),
      *           then a loop would form by moving to that adjacent square; do not do so.
@@ -80,7 +80,7 @@ MazeAPI.onRun(function() {
      *         If this single condition is met, this is a valid backtracking square.
      *         Note that there can only be one possible valid backtracking move available at any given position for which Rule (1) does not apply.
      * That's all!  With the above algorithm & rules in place, the maze can be traversed.
-     * You can see from the above rules that only the 'up', 'right', 'down', 'left' traversal information needs to be tracked for every square.
+     * You can see from the above rules that only the local 'up', 'right', 'down', 'left' traversal information needs to be tracked for every square.
      *
      * // ******************* //
      * // ADDITIONAL COMMENTS
@@ -136,22 +136,23 @@ MazeAPI.onRun(function() {
         if (openBranch) {
             // ****************************************************************************** //
             // A path onto an adjacent square that has NEVER been visited is available.  Take it.
-            // ... This works even for corridors (i.e., paths without a decision-point branch).
+            // ... This works even for corridors (i.e., squares without a decision-point branch).
             // ****************************************************************************** //
             newPos = openBranch;
         }
         else {
             // ****************************************************************************** //
             // No open branch is available, so we must backtrack.
-            // The algorithm guarantees that there can be only one possible backtracking direction.
+            // The algorithm guarantees that there will be one and only one backtracking direction
+            // from a given square assuming that there IS an exit to the maze and that no open branch squares are available.
             // (This also applies in corridors.)
-            // BREAK LOOPS and AVOID DEAD ENDS:
+            // THE PROPER BACKTRACKING SQUARE IS FOUND SIMPLY BY BREAKING LOOPS and AVOIDING DEAD END PATHS:
             // - Break loops:
             //   If we have previously been on the target adjacent square but NEVER traversed to/from that square
             //   from/to our current square, this reveals a LOOP and we break that loop by treating that boundary
             //   as a LOGICAL WALL: It is rejected as a backtracking possibility.
             // - Skip dead ends:
-            //   If we have traversed in BOTH directions over a given boundary,
+            //   If we have previously traversed in BOTH directions over a given boundary,
             //   this reveals a DEAD END and it counts as a LOGICAL WALL; it is rejected as a backtracking possibility.
             // Therefore, the condition for a BACKTRACKING path is simply that
             // we must NEVER have previously moved FROM the current position TO the target position,
@@ -167,7 +168,7 @@ MazeAPI.onRun(function() {
 
         // ****************************************************************************** //
         // This is the key state-saving step of the algorithm!
-        // Set the proper state bit to indicate that we are moving in the given direction.
+        // Set the proper state bit to indicate that we are traversing in the given direction from the current square.
         // ****************************************************************************** //
         var bufferIndex = internals.getBufferIndex(internals.row, internals.col);
         var currentData = internals.mazeData[bufferIndex];
@@ -186,15 +187,14 @@ MazeAPI.onRun(function() {
 });
 
 // ****************************************************************************** //
-// The following function (class) contains the IMPLEMENTATION details.
-// For the algorithm itself, in overview, see above.
+// The following constructor function (class) contains the IMPLEMENTATION details.
+// For the algorithm itself, see above.
 // ****************************************************************************** //
 function implementation() {
 
     var self = this;
 
-    // Should be self-explanatory - the MAXIMUM allowed width/height of the maze
-    // (the actual width/height can be less).
+    // Should be self-explanatory - the MAXIMUM allowed width/height of the maze (the actual width/height can be less).
     // Will be dynamically resized if necessary.
     // START THE DIMENSION AT (2+1, 2+1) TO DEMONSTRATE THAT THE MAZE-EXPANSION CODE IS BUG-FREE.
     self.maxMazeWidth = 2;
@@ -207,9 +207,13 @@ function implementation() {
     self.col = 0;
 
     // ****************************************************************************** //
-    // Create a buffer to track LOCAL maze data (which of the four directions have been traversed out of each square?).
-    // The starting point in the maze is taken to be (0,0), and the coordinates can be negative.
-    // EACH COORDINATE corresponds to a single byte in the buffer at index (row * maxMazeWidth + col).
+    // Create a buffer to track LOCAL maze data (which of the four directions have been traversed out of each & every square?).
+    // Initialize to 0 for all squares & potential squares.
+    // The starting point in the maze is taken to be (0,0) (the center of a POTENTIAL maze, even if the ACTUAL maze
+    // has (0,0) at the upper left because the starting position is at the upper left).
+    // The coordinates can be negative in the general case.
+    // EACH COORDINATE corresponds to a single byte in the buffer.
+    // The function that calculates the index within the buffer for the data byte for a given (row,col) is below.
     //
     // The BYTE for each coordinate is a bitmask:
     // 0x01 represents UP
@@ -219,6 +223,7 @@ function implementation() {
     // (The remaining 4 bits in each byte are unused)
     //
     // If a bit is SET, it means that the path FROM the given coordinate in the given direction has been traversed.
+    // Each byte is initialized to all 0's, meaning no squares have been traversed at the beginning.
     // This local information is all the information that we need to solve the maze in O(n).
     // ****************************************************************************** //
     // This object will be instantiated at the end of this constructor function (in a call to 'expandBufferIfNecessary')
@@ -359,8 +364,8 @@ function implementation() {
     };
 
     // ****************************************************************************** //
-    // This function expands the data buffer if the maze is becoming too big
-    // Note that the maze CAN be SMALLER than the maximum dimensions
+    // This function expands the data buffer if the maze is becoming too big.
+    // Note that the maze CAN be SMALLER than the maximum dimensions.
     // ****************************************************************************** //
     self.expandBufferIfNecessary = function(testPos) {
         // In case the maze is larger than our current maximum, exponentially increase its size.
@@ -380,6 +385,11 @@ function implementation() {
             var tempBuffer = new ArrayBuffer(newBufferSize);
             var tempData = new Uint8Array(tempBuffer);
             if (self.mazeData !== null) {
+                // There is existing maze data.
+                // Intelligently copy the existing data into our new data buffer.
+                // (It's non-trivial logic, but still fairly simple.
+                // Note that in each data structure, the row data appears contiguously, with the first row's data immediately followed
+                // by the second row's data, and so on to the final row.)
                 var currentTargetIndex = 0;
                 var currentSourceIndex = 0;
                 for (var j = 0; j < self.maxMazeHeight + 1; ++j) {
@@ -396,12 +406,16 @@ function implementation() {
 
     self.getBufferIndex = function(row, col) {
 
-        // (0,0) is in the center
+        // Given a row and column index, calculate the corresponding index in the data buffer containing the data byte
+        // representing that row and column.
+
+        // (0,0) is in the CENTER of the maze represented by the data buffer (even if the ACTUAL maze has (0,0) at the upper-left)
 
         // The dimensions of the maze represented by the data structure (which can be larger than the actual maze dimensions)
-        // are (maxMazeHeight+1, maxMazeWidth+1) - that way, the 0 can be precisely at the center, with maxMazeHeight/2 and maxMazeWidth/2 in both directions
+        // are (maxMazeHeight+1, maxMazeWidth+1) - we add one to each dimension so that the 0 can be precisely at the center,
+        // with maxMazeHeight/2 and maxMazeWidth/2 squares extending in both directions from the center
 
-        // The very middle index of the buffer is given by the following formula
+        // The very middle index of the BUFFER is given by the following formula
         var zeroPt = ((self.maxMazeWidth + 1) * (self.maxMazeHeight + 1) - 1) / 2;
 
         // For every row below or above 0, subtract or add a full width.
