@@ -370,7 +370,12 @@ function implementation() {
         if (Math.abs(x) > self.maxMazeWidth / 2) { doExpandWidth = true; }
         if (Math.abs(y) > self.maxMazeHeight / 2) { doExpandHeight = true; }
         if (doExpandWidth || doExpandHeight) {
-            var newBufferSize = ((doExpandWidth ? self.maxMazeWidth * 2 : self.maxMazeWidth) + 1) * ((doExpandHeight ? self.maxMazeHeight * 2 : self.maxMazeHeight) + 1);
+            var newMazeWidth = self.maxMazeWidth;
+            var newMazeHeight = self.maxMazeHeight;
+            if (doExpandWidth) { newMazeWidth *= 2; }
+            if (doExpandHeight) { newMazeHeight *= 2; }
+            console.log("Expanding maze to " + newMazeHeight + "x" + newMazeWidth);
+            var newBufferSize = (newMazeWidth + 1) * (newMazeHeight + 1);
             var tempBuffer = new ArrayBuffer(newBufferSize);
             var tempData = new Uint8Array(tempBuffer);
             if (self.mazeData !== null) {
@@ -379,11 +384,11 @@ function implementation() {
                 for (var j = 0; j < self.maxMazeHeight + 1; ++j) {
                     tempData.set(self.mazeData.subarray(currentSourceIndex, currentSourceIndex + self.maxMazeWidth + 1), currentTargetIndex);
                     currentSourceIndex += self.maxMazeWidth + 1;
-                    currentTargetIndex += (doExpandWidth ? self.maxMazeWidth * 2 : self.maxMazeWidth) + 1;
+                    currentTargetIndex += newMazeWidth + 1;
                 }
             }
-            self.maxMazeWidth *= 2;
-            self.maxMazeHeight *= 2;
+            self.maxMazeWidth = newMazeWidth;
+            self.maxMazeHeight = newMazeHeight;
             self.mazeData = tempData;
         }
     };
