@@ -169,9 +169,10 @@ MazeAPI.onRun(function() {
         // This is the key state-saving step of the algorithm!
         // Set the proper state bit to indicate that we are moving in the given direction.
         // ****************************************************************************** //
-        var currentData = internals.mazeData[internals.row * (internals.maxMazeWidth + 1) + internals.col];
+        var bufferIndex = internals.getBufferIndex(internals.row, internals.col);
+        var currentData = internals.mazeData[bufferIndex];
         currentData |= newPos.bit;
-        internals.mazeData[internals.row * (internals.maxMazeWidth + 1) + internals.col] = currentData;
+        internals.mazeData[bufferIndex] = currentData;
 
         // Save our new position
         internals.row = newPos.row;
@@ -195,8 +196,10 @@ function implementation() {
     // Should be self-explanatory - the MAXIMUM allowed width/height of the maze
     // (the actual width/height can be less).
     // Will be dynamically resized if necessary.
-    self.maxMazeWidth = 50;
-    self.maxMazeHeight = 50;
+    self.maxMazeWidth = 2;
+    self.maxMazeHeight = 2;
+
+    console.log("Initial dimensions of maze: " + self.maxMazeHeight + "x" + self.maxMazeWidth);
 
     // Track our current position in the maze.
     self.row = 0;
@@ -274,7 +277,7 @@ function implementation() {
             // ****************************************************************************** //
 
             // Get the data byte corresponding to the test position
-            var testByte = self.mazeData[testPos.row * (self.maxMazeWidth + 1) + testPos.col];
+            var testByte = self.mazeData[internals.getBufferIndex(testPos.row, testPos.col)];
 
             // Test if any bit has been set - if so, we HAVE been on that square, so return false
             if ( (testByte & 1) || (testByte & 2) || (testByte & 4) || (testByte & 8) ) {
@@ -339,8 +342,9 @@ function implementation() {
             // ****************************************************************************** //
 
             // Get the data byte corresponding to the test position and to the current position
-            var targetData = self.mazeData[testPos.row * (self.maxMazeWidth + 1) + testPos.col];
-            var currentData = self.mazeData[self.row * (self.maxMazeWidth + 1) + self.col];
+
+            var targetData = self.mazeData[internals.getBufferIndex(testPos.row, testPos.col)];
+            var currentData = self.mazeData[internals.getBufferIndex(self.row, self.col)];
 
             // Test for the backtracking condition
             if ( ((targetData & testBitFromTarget) != 0) && ((currentData & testBitToTarget) == 0) ) {
@@ -373,8 +377,8 @@ function implementation() {
                 var currentTargetIndex = 0;
                 var currentSourceIndex = 0;
                 for (var j = 0; j < self.maxMazeHeight + 1; ++j) {
-                    tempData.set(self.mazeData.subarray(currentSourceIndex, currentSourceIndex + self.maxMazeWidth), currentTargetIndex);
-                    currentSourceIndex += self.maxMazeWidth;
+                    tempData.set(self.mazeData.subarray(currentSourceIndex, currentSourceIndex + self.maxMazeWidth + 1), currentTargetIndex);
+                    currentSourceIndex += self.maxMazeWidth + 1;
                     currentTargetIndex += (doExpandWidth ? self.maxMazeWidth * 2 : self.maxMazeWidth) + 1;
                 }
             }
@@ -382,6 +386,27 @@ function implementation() {
             self.maxMazeHeight *= 2;
             self.mazeData = tempData;
         }
+    };
+
+    self.getBufferIndex = function(row, col) {
+
+        // (0,0) is in the center
+
+        // The dimensions of the maze represented by the data structure (which can be larger than the actual maze dimensions)
+        // are (maxMazeHeight+1, maxMazeWidth+1) - that way, the 0 can be precisely at the center, with maxMazeHeight/2 and maxMazeWidth/2 in both directions
+
+        // The very middle index of the buffer is given by the following formula
+        var zeroPt = ((self.maxMazeWidth + 1) * (self.maxMazeHeight + 1) - 1) / 2;
+
+        // For every row below or above 0, subtract or add a full width.
+        // ('row' can be negative because (0,0) represents the center of the maze)
+        var rowPt = zeroPt + row * self.maxMazeWidth;
+
+        // For every col below or above 0, subtract or add that many columns
+        // ('col' can be negative because (0,0) represents the center of the maze)
+        var rowColPt = rowPt + col;
+
+        return rowColPt;
     };
 
     // Initialize the buffer for the default (starting) maximum maze dimensions.
