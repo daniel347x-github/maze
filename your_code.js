@@ -196,6 +196,7 @@ function implementation() {
     // Should be self-explanatory - the MAXIMUM allowed width/height of the maze
     // (the actual width/height can be less).
     // Will be dynamically resized if necessary.
+    // START THE DIMENSION AT (2+1, 2+1) TO DEMONSTRATE THAT THE MAZE-EXPANSION CODE IS BUG-FREE.
     self.maxMazeWidth = 2;
     self.maxMazeHeight = 2;
 
