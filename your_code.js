@@ -380,11 +380,14 @@ function implementation() {
         if (Math.abs(x) > self.maxMazeWidth / 2) { doExpandWidth = true; }
         if (Math.abs(y) > self.maxMazeHeight / 2) { doExpandHeight = true; }
         if (doExpandWidth || doExpandHeight) {
+            
             var newMazeWidth = self.maxMazeWidth;
             var newMazeHeight = self.maxMazeHeight;
             if (doExpandWidth) { newMazeWidth *= 2; }
             if (doExpandHeight) { newMazeHeight *= 2; }
-            console.log("Expanding maze to " + newMazeHeight + "x" + newMazeWidth);
+            //console.log("Prior to expanding maze, contents of buffer:");
+            //self.spitBuffer();
+            //console.log("Expanding maze to " + newMazeHeight + "x" + newMazeWidth);
             var newBufferSize = (newMazeWidth + 1) * (newMazeHeight + 1);
             var tempBuffer = new ArrayBuffer(newBufferSize);
             var tempData = new Uint8Array(tempBuffer);
@@ -394,9 +397,24 @@ function implementation() {
                 // (It's non-trivial logic, but still fairly simple.
                 // Note that in each data structure, the row data appears contiguously, with the first row's data immediately followed
                 // by the second row's data, and so on to the final row.)
+                
                 var currentTargetIndex = 0;
+                if (doExpandHeight) {
+                    // pad with rows at bottom
+                    currentTargetIndex += (self.maxMazeHeight / 2) * (newMazeWidth + 1);
+                }
+                if (doExpandWidth) {
+                    // pad with columns at left
+                    currentTargetIndex += self.maxMazeWidth / 2;
+                }
                 var currentSourceIndex = 0;
                 for (var j = 0; j < self.maxMazeHeight + 1; ++j) {
+                    // set the data
+                    var dataToCopy = "";
+                    for (var d=0; d<self.maxMazeWidth + 1; ++d) {
+                        dataToCopy += self.mazeData[currentSourceIndex+d];
+                    }
+                    //console.log("source index: " + currentSourceIndex + ", row width: " + (self.maxMazeWidth + 1) + ", target index: " + currentTargetIndex + ", data: " + dataToCopy);
                     tempData.set(self.mazeData.subarray(currentSourceIndex, currentSourceIndex + self.maxMazeWidth + 1), currentTargetIndex);
                     currentSourceIndex += self.maxMazeWidth + 1;
                     currentTargetIndex += newMazeWidth + 1;
@@ -405,8 +423,29 @@ function implementation() {
             self.maxMazeWidth = newMazeWidth;
             self.maxMazeHeight = newMazeHeight;
             self.mazeData = tempData;
+            //self.spitBuffer();
         }
     };
+    
+    self.spitBuffer = function() {
+        if (self.mazeData == null) {
+            console.log("Uninitialzed buffer!");
+            return;
+        }
+        var rawData = "";
+        for (var count = 0; count < (self.maxMazeWidth+1) * (self.maxMazeHeight+1); ++count) {
+            rawData += self.mazeData[count];
+        }
+        console.log("Raw data:");
+        console.log(rawData);
+        for (var row=-1*self.maxMazeHeight/2; row<=self.maxMazeHeight/2; ++row) {
+            var singleRow = "";
+            for (var col=-1*self.maxMazeWidth/2; col<=self.maxMazeWidth/2; ++col) {
+                singleRow += self.mazeData[self.getBufferIndex(row,col)];
+            }
+            console.log(singleRow);
+        }
+    }
 
     self.getBufferIndex = function(row, col) {
 
@@ -424,7 +463,7 @@ function implementation() {
 
         // For every row below or above 0, subtract or add a full width.
         // ('row' can be negative because (0,0) represents the center of the maze)
-        var rowPt = zeroPt + row * self.maxMazeWidth;
+        var rowPt = zeroPt + row * (self.maxMazeWidth + 1);
 
         // For every col below or above 0, subtract or add that many columns
         // ('col' can be negative because (0,0) represents the center of the maze)
